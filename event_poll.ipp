@@ -1,16 +1,16 @@
 #pragma once
-#include "event_pool.h"
+#include "event_poll.h"
 
 namespace Lunaris {
 
     template<typename T>
-    inline std::mutex& event_pool<T>::get_cond_mutex()
+    inline std::mutex& event_poll<T>::get_cond_mutex()
     {
         return mu;
     }
 
     template<typename T>
-    inline bool event_pool<T>::wait_nolock(std::unique_lock<std::mutex>& lk)
+    inline bool event_poll<T>::wait_nolock(std::unique_lock<std::mutex>& lk)
     {
         if (is_set()) return true;
         cond.wait_for(lk, std::chrono::milliseconds(2000), [&]{ return is_set(); }); // this will wait for max 2 times lol
@@ -18,7 +18,7 @@ namespace Lunaris {
     }
 
     template<typename T>
-    inline T event_pool<T>::grab_front()
+    inline T event_poll<T>::grab_front()
     {
         if (queue.size() == 0) throw std::out_of_range("Queue was empty on get!");
         T mov = std::move(queue.front());
@@ -27,7 +27,7 @@ namespace Lunaris {
     }
 
     template<typename T>
-    inline T event_pool<T>::wait()
+    inline T event_poll<T>::wait()
     {
         std::unique_lock<std::mutex> lk(mu);
 
@@ -38,13 +38,13 @@ namespace Lunaris {
     }
 
     template<typename T>
-    inline bool event_pool<T>::is_set() const
+    inline bool event_poll<T>::is_set() const
     {
         return queue.size();
     }
 
     template<typename T>
-    inline void event_pool<T>::post(T t)
+    inline void event_poll<T>::post(T t)
     {
         std::lock_guard<std::mutex> lp(post_lock);
         {
@@ -55,7 +55,7 @@ namespace Lunaris {
     }
 
     template<typename T>
-    inline void event_pool_async<T>::loop(const size_t id)
+    inline void event_poll_async<T>::loop(const size_t id)
     {
         while (!is_ready && !must_quit) std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
@@ -72,20 +72,20 @@ namespace Lunaris {
 
             dts[0] = std::chrono::high_resolution_clock::now();
 
-            std::unique_lock<std::mutex> lk(pool.get_cond_mutex());
+            std::unique_lock<std::mutex> lk(poll.get_cond_mutex());
             //std::cout << std::this_thread::get_id() << ":" << id << " IDLE" << std::endl;
             self.taskinf.is_tasking = false;
 
-            if (!pool.wait_nolock(lk)) continue;
+            if (!poll.wait_nolock(lk)) continue;
 
             //std::cout << std::this_thread::get_id() << ":" << id << " --- GOT" << std::endl;
             self.taskinf.is_tasking = true;
-            T _t = pool.grab_front();
+            T _t = poll.grab_front();
 
             //std::cout << std::this_thread::get_id() << ":" << id << " RUNNING" << std::endl;
             lk.unlock();
 
-            pool.cond.notify_all(); // unlock locked ones if any
+            poll.cond.notify_all(); // unlock locked ones if any
 
             std::unique_lock<std::mutex> lu(handl_safety);
             std::function<void(T&&)> handl_cpy = handl;
@@ -118,13 +118,13 @@ namespace Lunaris {
     }
 
     template<typename T>
-    inline event_pool_async<T>::event_pool_async(const unsigned int numthr)
+    inline event_poll_async<T>::event_poll_async(const unsigned int numthr)
     {
         reset_threads(numthr);
     }
 
     template<typename T>
-    inline event_pool_async<T>::event_pool_async(std::function<void(T&&)> f, const unsigned int numthr)
+    inline event_poll_async<T>::event_poll_async(std::function<void(T&&)> f, const unsigned int numthr)
         : handl(f)
     {
         if (!f) throw std::invalid_argument("Function is empty! If you don't want to specify one on constructor, don't call the one that sets it!");
@@ -132,7 +132,7 @@ namespace Lunaris {
     }
     
     template<typename T>
-    inline event_pool_async<T>::event_pool_async(std::function<void(T&&)> f, std::function<void(const std::exception&)> ef, const unsigned int numthr) 
+    inline event_poll_async<T>::event_poll_async(std::function<void(T&&)> f, std::function<void(const std::exception&)> ef, const unsigned int numthr) 
         : handl(f), exception_handl(ef)
     {
         if (!f || !ef) throw std::invalid_argument("One of the functions is empty! If you don't want to specify one on constructor, don't call the one that sets it!");
@@ -140,27 +140,27 @@ namespace Lunaris {
     }
     
     template<typename T>
-    inline event_pool_async<T>::~event_pool_async()
+    inline event_poll_async<T>::~event_poll_async()
     {
         destroy_all();
     }
 
     template<typename T>
-    inline void event_pool_async<T>::set_handler(std::function<void(T&&)> f)
+    inline void event_poll_async<T>::set_handler(std::function<void(T&&)> f)
     {
         std::lock_guard<std::mutex> lu(handl_safety);
         handl = f;
     }
 
     template<typename T>
-    inline void event_pool_async<T>::set_exception_handler(std::function<void(const std::exception&)> f)
+    inline void event_poll_async<T>::set_exception_handler(std::function<void(const std::exception&)> f)
     {
         std::lock_guard<std::mutex> lu(handl_safety);
         exception_handl = f;
     }
 
     template<typename T>
-    inline void event_pool_async<T>::reset_threads(const unsigned int numthr)
+    inline void event_poll_async<T>::reset_threads(const unsigned int numthr)
     {
         std::lock_guard<std::recursive_mutex> lu(thrs_safety);
         destroy_all();
@@ -171,34 +171,34 @@ namespace Lunaris {
     }
 
     template<typename T>
-    inline void event_pool_async<T>::destroy_all()
+    inline void event_poll_async<T>::destroy_all()
     {
         std::lock_guard<std::recursive_mutex> lu(thrs_safety);
         must_quit = true;
         if (thrs.size()) {
-            std::lock_guard<std::mutex> lp(pool.post_lock);
+            std::lock_guard<std::mutex> lp(poll.post_lock);
             for(auto& it : thrs) if (it.thr.joinable()) it.thr.join();
             thrs.clear();
         }
     }
 
     template<typename T>
-    inline bool event_pool_async<T>::has_tasks_queued() const
+    inline bool event_poll_async<T>::has_tasks_queued() const
     {
-        return pool.is_set();
+        return poll.is_set();
     }
 
     template<typename T>
-    inline bool event_pool_async<T>::has_task_running() const
+    inline bool event_poll_async<T>::has_task_running() const
     {
-        if (pool.is_set()) return true;
+        if (poll.is_set()) return true;
         std::lock_guard<std::recursive_mutex> lu(thrs_safety);
         for(const auto& i : thrs) if (i.taskinf.is_tasking) return true;
         return false;
     }
 
     template<typename T>
-    inline std::vector<event_task_info> event_pool_async<T>::get_threads_status() const
+    inline std::vector<event_task_info> event_poll_async<T>::get_threads_status() const
     {
         std::lock_guard<std::recursive_mutex> lu(thrs_safety);
         std::vector<event_task_info> vec;
@@ -207,8 +207,8 @@ namespace Lunaris {
     }
 
     template<typename T>
-    inline void event_pool_async<T>::post(T t)
+    inline void event_poll_async<T>::post(T t)
     {
-        pool.post(std::move(t));
+        poll.post(std::move(t));
     }
 }
