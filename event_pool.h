@@ -10,11 +10,11 @@
 namespace Lunaris {
 
     template<typename T>
-    class event_poll_async;
+    class event_pool_async;
 
     template<typename T>
-    class event_poll {
-        friend class event_poll_async<T>;
+    class event_pool {
+        friend class event_pool_async<T>;
 
         std::condition_variable cond;
         std::mutex mu;
@@ -42,13 +42,13 @@ namespace Lunaris {
     };
 
     template<typename T>
-    class event_poll_async {
+    class event_pool_async {
         struct async_info {
             std::thread thr;
             event_task_info taskinf;
         };
 
-        event_poll<T> poll;
+        event_pool<T> pool;
 
         std::vector<async_info> thrs;
         mutable std::recursive_mutex thrs_safety;
@@ -62,10 +62,10 @@ namespace Lunaris {
 
         void loop(const size_t);
     public:
-        event_poll_async(const unsigned int = std::thread::hardware_concurrency());
-        event_poll_async(std::function<void(T&&)>, const unsigned int = std::thread::hardware_concurrency());
-        event_poll_async(std::function<void(T&&)>, std::function<void(const std::exception&)>, const unsigned int = std::thread::hardware_concurrency());
-        ~event_poll_async();
+        event_pool_async(const unsigned int = std::thread::hardware_concurrency());
+        event_pool_async(std::function<void(T&&)>, const unsigned int = std::thread::hardware_concurrency());
+        event_pool_async(std::function<void(T&&)>, std::function<void(const std::exception&)>, const unsigned int = std::thread::hardware_concurrency());
+        ~event_pool_async();
 
         // set function handler
         void set_handler(std::function<void(T&&)>);
@@ -93,4 +93,4 @@ namespace Lunaris {
 
 }
 
-#include "event_poll.ipp"
+#include "event_pool.ipp"
