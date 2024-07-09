@@ -19,7 +19,8 @@ namespace Lunaris {
         std::condition_variable cond;
         std::mutex mu;
         std::vector<T> queue;
-        
+
+        std::atomic_size_t max_timeout_wait = 1000; // ms
         std::mutex post_lock;
 
         std::mutex& get_cond_mutex();
@@ -28,17 +29,28 @@ namespace Lunaris {
         // may throw exception if empty
         T grab_front();
     public:
+        // Waits for task. Returns if has something to do
         T wait();
+
+        // Returns true if has something in queue to get (use wait())
         bool is_set() const;
+
+        // Post task to queue
         void post(T);
+
+        // Queue size
+        size_t size() const;
+
+        // Max delay on internal refresh loop. Tasks will delay at max this time, in ms
+        void set_max_delay_wait(const size_t);
     };
 
     struct event_task_info {
         std::string thread_id_str; // converted
         std::thread::id thread_id; // original
         bool is_tasking = false; // thread is on a task right now
-        double latency_get = 0; // per task get (dynamic average) [microsec]
-        double latency_run = 0; // per task run (defined by user, dynamic average) [microsec]
+        double latency_get = 0; // per task get wait (max delay defined by user, dynamic average) [microsec]
+        double latency_run = 0; // per task run time (defined by user, dynamic average) [microsec]
     };
 
     template<typename T>
@@ -85,10 +97,20 @@ namespace Lunaris {
         // if any thread is running
         bool has_task_running() const;
 
+        // queue size
+        size_t size_queued() const;
+
+        // thread count set at the beginning
+        size_t thread_count() const;
+
         // get current thread tasking information individually
         std::vector<event_task_info> get_threads_status() const;
 
+        // post something to be processed
         void post(T);
+
+        // set max delay in millisec (lower gets more responsive, but CPU cost is higher) (minimum: 5 ms)
+        void set_max_delay_wait(const size_t);
     };
 
 }

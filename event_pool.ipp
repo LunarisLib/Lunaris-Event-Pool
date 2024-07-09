@@ -13,7 +13,7 @@ namespace Lunaris {
     inline bool event_pool<T>::wait_nolock(std::unique_lock<std::mutex>& lk)
     {
         if (is_set()) return true;
-        cond.wait_for(lk, std::chrono::milliseconds(2000), [&]{ return is_set(); }); // this will wait for max 2 times lol
+        cond.wait_for(lk, std::chrono::milliseconds(max_timeout_wait), [&]{ return is_set(); }); // this will wait for max 2 times lol
         return is_set();
     }
 
@@ -31,8 +31,8 @@ namespace Lunaris {
     {
         std::unique_lock<std::mutex> lk(mu);
 
-        if (!is_set())
-            cond.wait_for(lk, std::chrono::milliseconds(50), [this]{ return is_set();});
+        while (!is_set())
+            cond.wait_for(lk, std::chrono::milliseconds(max_timeout_wait), [this]{ return is_set();});
         
         return grab_front();
     }
@@ -40,7 +40,7 @@ namespace Lunaris {
     template<typename T>
     inline bool event_pool<T>::is_set() const
     {
-        return queue.size();
+        return queue.size() > 0;
     }
 
     template<typename T>
@@ -52,6 +52,18 @@ namespace Lunaris {
             queue.emplace_back(std::move(t));
         }
         cond.notify_one();
+    }
+
+    template<typename T>
+    inline size_t event_pool<T>::size() const
+    {
+        return queue.size();
+    }
+
+    template<typename T>
+    inline void event_pool<T>::set_max_delay_wait(const size_t nt)
+    {
+        max_timeout_wait = (nt < 5) ? 5 : nt;
     }
 
     template<typename T>
@@ -197,6 +209,19 @@ namespace Lunaris {
         return false;
     }
 
+
+    template<typename T>
+    inline size_t event_pool_async<T>::size_queued() const
+    {
+        return pool.size();
+    }
+
+    template<typename T>
+    inline size_t event_pool_async<T>::thread_count() const
+    {
+        return thrs.size();
+    }
+
     template<typename T>
     inline std::vector<event_task_info> event_pool_async<T>::get_threads_status() const
     {
@@ -210,5 +235,11 @@ namespace Lunaris {
     inline void event_pool_async<T>::post(T t)
     {
         pool.post(std::move(t));
+    }
+
+    template<typename T>
+    inline void event_pool_async<T>::set_max_delay_wait(const size_t nt)
+    {
+        pool.set_max_delay_wait(nt);
     }
 }
