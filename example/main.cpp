@@ -8,7 +8,7 @@ using namespace Lunaris::EventPool;
 
 int main() {    
     std::atomic_size_t counter{0};
-    AsyncEventPoolBase<void> events([&counter]{ ++counter; });
+    AsyncEventPool<void> events([&counter]{ ++counter; });
 
     std::cout << "Testing simple watch tied there" << std::endl;
 

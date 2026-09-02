@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <shared_mutex>
+#include <chrono>
 #include <thread>
 
 #include <Lunaris/Event-Pool/pool.h>
@@ -16,13 +17,16 @@ namespace EventPool {
     };
 
     template<typename T>
-    class AsyncEventPoolBase : protected EventPool<T> {
+    class AsyncEventPool : protected EventPool<T> {
     public:
-        AsyncEventPoolBase(
+        AsyncEventPool(
             std::function<void(T)> handler,
-            std::function<void(const std::exception&)> exception_handler = [](const auto& ex){ std::terminate(); },
             const size_t threads_amount = std::thread::hardware_concurrency());
-        ~AsyncEventPoolBase();
+        AsyncEventPool(
+            std::function<void(T)> handler,
+            std::function<void(const std::exception&)> exception_handler,
+            const size_t threads_amount = std::thread::hardware_concurrency());
+        ~AsyncEventPool();
 
         void set_moving_avg_factor(const double factor);
         std::vector<async_event_pool_stats> get_threads_stats() const;
@@ -41,13 +45,16 @@ namespace EventPool {
     };
 
     template<>
-    class AsyncEventPoolBase<void> : protected EventPool<void> {
+    class AsyncEventPool<void> : protected EventPool<void> {
     public:
-        AsyncEventPoolBase(
+        AsyncEventPool(
             std::function<void()> handler,
-            std::function<void(const std::exception&)> exception_handler = [](const auto& ex){ std::terminate(); },
             const size_t threads_amount = std::thread::hardware_concurrency());
-        ~AsyncEventPoolBase();
+        AsyncEventPool(
+            std::function<void()> handler,
+            std::function<void(const std::exception&)> exception_handler,
+            const size_t threads_amount = std::thread::hardware_concurrency());
+        ~AsyncEventPool();
 
         void set_moving_avg_factor(const double factor);
         std::vector<async_event_pool_stats> get_threads_stats() const;

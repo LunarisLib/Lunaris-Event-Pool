@@ -11,7 +11,7 @@ int main() {
     size_t accum_ext = 0;
 
     std::atomic_size_t counter{0};
-    AsyncEventPoolBase<size_t> events([&counter](size_t acc){ counter += acc; });
+    AsyncEventPool<size_t> events([&counter](size_t acc){ counter += acc; });
 
     std::cout << "Testing simple watch tied there" << std::endl;
 
