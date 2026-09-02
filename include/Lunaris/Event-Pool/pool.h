@@ -93,6 +93,9 @@ namespace EventPool {
         std::vector<T> m_queue;
     };
 
+    /**
+     * @brief Void version of EventPool
+     */
     template<>
     class EventPool<void> : public EventPoolBase {
         size_t m_queue_total = 0;
