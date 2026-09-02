@@ -7,33 +7,16 @@
 using namespace Lunaris::EventPool;
 
 int main() {    
-    EventPool<void> simple_events;
     std::atomic_size_t counter{0};
-    std::atomic_bool running{true};
-
-    std::thread watch([&simple_events,&counter,&running]{ 
-        while(running) {
-            try {
-                simple_events.get_abort_if_false(running);
-            } catch(const EventPoolTimeoutException& e) {
-                std::cout << "# thread got exception: " << e.what() << std::endl;
-                continue;
-            }
-            ++counter;
-            std::cout << "# thread event [" << counter.load() << "]" << std::endl;
-        }
-    });
+    AsyncEventPoolBase<void> events([&counter]{ ++counter; });
 
     std::cout << "Testing simple watch tied there" << std::endl;
 
     for(size_t p = 0; p < 10; ++p) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10 + rand() % 100));
-        simple_events.post();
+        events.post();
         std::this_thread::sleep_for(std::chrono::milliseconds(20 + rand() % 100));
     }
-
-    running = false;
-    watch.join();
 
     std::cout << "Final: " << counter.load() << std::endl;
 

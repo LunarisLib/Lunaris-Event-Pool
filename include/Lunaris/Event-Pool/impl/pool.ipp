@@ -53,6 +53,5 @@ namespace EventPool {
         return m_queue.size();
     }
 
-
 } // namespace EventPool
 } // namespace Lunaris
