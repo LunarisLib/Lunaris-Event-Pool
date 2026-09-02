@@ -13,5 +13,13 @@ namespace EventPool {
         const char* what() const noexcept;
     };
 
+    class EventPoolTimeoutException : public EventPoolException {
+    public:
+        explicit EventPoolTimeoutException(const std::string&) noexcept;
+        explicit EventPoolTimeoutException(const char*) noexcept;
+
+        const char* what() const noexcept;
+    };
+
 } // namespace EventPool
 } // namespace Lunaris

@@ -16,8 +16,6 @@ namespace EventPool {
      */
     class EventPoolBase {
     public:
-        virtual ~EventPoolBase() = 0;
-
         /**
          * @brief Set the max delay before retrying a get() without a signal
          * 
@@ -63,6 +61,14 @@ namespace EventPool {
         T get();
 
         /**
+         * @brief Attempts to get item in queue, or wait for one, or throw if `stay_trying` goes false
+         * 
+         * @param stay_trying boolean that it keeps checked every timeout set with `m_max_wait_step_ms` at most
+         * @return `T` the item in front of the queue (oldest)
+         */
+        T get_abort_if_false(const std::atomic_bool& stay_trying);
+
+        /**
          * @brief Check if there's something in the queue without locking
          * 
          * @return `bool` true means there is something there
@@ -95,6 +101,13 @@ namespace EventPool {
          * @brief Attempts to get if there was a posted event, or wait for one
          */
         void get();
+
+        /**
+         * @brief Attempts to get if there was a posted event, or wait for one, or throw if `stay_trying` goes false
+         * 
+         * @param stay_trying boolean that it keeps checked every timeout set with `m_max_wait_step_ms` at most
+         */
+        void get_abort_if_false(const std::atomic_bool& stay_trying);
 
         /**
          * @brief Check if there's something in the queue without locking

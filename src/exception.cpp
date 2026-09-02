@@ -17,5 +17,20 @@ namespace EventPool {
         return std::runtime_error::what();
     }
 
+
+    EventPoolTimeoutException::EventPoolTimeoutException(const std::string& msg) noexcept
+        : EventPoolException(msg)
+    {
+    }
+
+    EventPoolTimeoutException::EventPoolTimeoutException(const char* msg) noexcept
+        : EventPoolException(msg)
+    {
+    }
+
+    const char* EventPoolTimeoutException::what() const noexcept {
+        return EventPoolException::what();
+    }
+
 } // namespace Socket
 } // namespace Lunaris

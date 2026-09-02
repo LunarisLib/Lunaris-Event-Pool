@@ -17,6 +17,23 @@ namespace EventPool {
     }
 
     template<typename T>
+    inline T EventPool<T>::get_abort_if_false(const std::atomic_bool& stay_trying) {
+        std::unique_lock<std::mutex> lk(m_cond_mtx);
+
+        while (!has() && stay_trying)
+            m_cond.wait_for(lk, std::chrono::milliseconds(m_max_wait_step_ms), [this,&stay_trying]{ return has() || !stay_trying; });
+        
+        if (m_queue.size() == 0) {
+            if (!stay_trying) throw EventPoolTimeoutException("Boolean condition became false before event arrived.");
+            else              throw EventPoolException("Condition test failed, caused invalid event.");
+        }
+
+        T mov = std::move(m_queue.front());
+        m_queue.erase(m_queue.begin());
+        return mov;
+    }
+
+    template<typename T>
     inline bool EventPool<T>::has() const {
         return m_queue.size() > 0;
     }
