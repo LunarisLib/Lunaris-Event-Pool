@@ -26,10 +26,12 @@ namespace EventPool {
 
         while (!has() && stay_trying)
             m_cond.wait_for(lk, std::chrono::milliseconds(m_max_wait_step_ms), [this,&stay_trying]{ return has() || !stay_trying; });
-
+        
+        if (!stay_trying) {
+            throw EventPoolTimeoutException("Boolean condition became false before event arrived.");
+        }
         if (m_queue_total == 0) {
-            if (!stay_trying) throw EventPoolTimeoutException("Boolean condition became false before event arrived.");
-            else              throw EventPoolException("Condition test failed, caused invalid event.");
+            throw EventPoolException("Condition test failed, caused invalid event.");
         }
             
         --m_queue_total;
